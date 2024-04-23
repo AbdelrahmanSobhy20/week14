@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:to_do_application/todoprovider.dart';
-
 import 'new todo.dart';
 
 class NewPage extends StatefulWidget {
@@ -14,25 +12,30 @@ class NewPage extends StatefulWidget {
 class _NewPageState extends State<NewPage> {
   List<Todo> todolist = [];
   bool todoIsChecked = false;
-  DateTime? selectedDate;
   TextEditingController titlesOfTasks = TextEditingController();
-  TextEditingController dateOfTasks = TextEditingController();
+  TextEditingController urlOfTasks = TextEditingController();
+
+  @override
+  void dispose() {
+    super.dispose();
+    titlesOfTasks.dispose();
+    urlOfTasks.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.blue,
         onPressed: () {
-          showModalBottomSheet(
-              context: context,
-              shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.only(
-                topRight: Radius.circular(20),
-                topLeft: Radius.circular(20),
-              )),
-              builder: ((context) {
-                return Container(
-                  padding: const EdgeInsets.all(20),
+          showDialog<void>(
+            context: context,
+            barrierDismissible: true,
+            builder: (BuildContext dialogContext) {
+              return AlertDialog(
+                title: const Text('Add Task'),
+                content: Container(
                   height: 200,
                   child: Column(
                     children: [
@@ -44,71 +47,41 @@ class _NewPageState extends State<NewPage> {
                                 fontSize: 20, fontWeight: FontWeight.bold)),
                       ),
                       TextFormField(
-                        controller: dateOfTasks,
+                        controller: urlOfTasks,
                         decoration: const InputDecoration(
-                            hintText: "Due Date",
+                            hintText: "Task URL",
                             hintStyle: TextStyle(
                                 fontSize: 20, fontWeight: FontWeight.bold)),
                       ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          IconButton(
-                              onPressed: () async {
-                                selectedDate = await showDatePicker(
-                                    context: context,
-                                    initialDate: DateTime.now(),
-                                    firstDate: DateTime.now(),
-                                    lastDate: DateTime.now()
-                                        .add(const Duration(days: 30)));
-                                if (selectedDate != null) {
-                                  String formattedDate =
-                                      DateFormat('yyyy/MM/dd')
-                                          .format(selectedDate!);
-                                  setState(() {
-                                    dateOfTasks.text = formattedDate;
-                                  });
-                                }
-                              },
-                              icon: const Icon(Icons.calendar_month)),
-                          const SizedBox(
-                            width: 150,
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                            child: const Text(
-                              "Cancel",
-                              style: TextStyle(
-                                fontSize: 20,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              TodoProvider.instance.insertTodo(Todo(
-                                  name: titlesOfTasks.text,
-                                  date: selectedDate!.millisecondsSinceEpoch,
-                                  isChecked: false));
-                              Navigator.of(context).pop();
-                              setState(() {});
-                            },
-                            child: const Text(
-                              "Save",
-                              style: TextStyle(
-                                fontSize: 20,
-                                color: Colors.blue,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
-                );
-              }));
+                ),
+                actions: <Widget>[
+                  TextButton(
+                    child: const Text('Add' , style: TextStyle(
+                      fontSize: 20
+                    ),),
+                    onPressed: () {
+                      if (titlesOfTasks.text != "" && urlOfTasks.text != "") {
+                        TodoProvider.instance.insertTodo(Todo(
+                            name: titlesOfTasks.text,
+                            url: urlOfTasks.text,
+                            isChecked: false));
+                      }
+
+                      setState(() {
+
+                      });
+                      Navigator.of(context).pop();
+                      titlesOfTasks.clear();
+                      urlOfTasks.clear();
+                      // Dismiss alert dialog
+                    },
+                  ),
+                ],
+              );
+            },
+          );
         },
         child: const Icon(
           Icons.add,
@@ -116,6 +89,21 @@ class _NewPageState extends State<NewPage> {
         ),
       ),
       appBar: AppBar(
+        actions: [
+          PopupMenuButton(
+            onSelected: (val) {
+              TodoProvider.instance.deleteAllList();
+              setState(() {});
+            },
+            itemBuilder: (BuildContext context) => [
+              const PopupMenuItem(
+                value: 0,
+                child: Text("Delete All"),
+              )
+            ],
+          )
+        ],
+        backgroundColor: Colors.blue,
         title: const Text(
           "Tasker",
           style: TextStyle(
@@ -123,50 +111,9 @@ class _NewPageState extends State<NewPage> {
           ),
         ),
         elevation: 0,
-        leading: const Icon(
-          Icons.list,
-          size: 40,
-        ),
       ),
       body: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            height: 100,
-            decoration: const BoxDecoration(
-              color: Colors.blue,
-            ),
-            child: const ListTile(
-              title: Text(
-                "OCT",
-                style: TextStyle(
-                    fontSize: 20,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                "2023",
-                style: TextStyle(
-                    fontSize: 20,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold),
-              ),
-              leading: Text(
-                "20",
-                style: TextStyle(
-                    fontSize: 50,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold),
-              ),
-              trailing: Text(
-                "Friday",
-                style: TextStyle(
-                    fontSize: 20,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
           Expanded(
             child: FutureBuilder<List<Todo>>(
                 future: TodoProvider.instance.getAllTodo(),
@@ -178,7 +125,10 @@ class _NewPageState extends State<NewPage> {
                   }
                   if (snapshot.hasData) {
                     todolist = snapshot.data!;
-                    return ListView.builder(
+                    return todolist.isEmpty? const Center(child: Text("No Items yet" , style: TextStyle(
+                        fontSize: 30,
+                        color: Colors.black
+                    ),),) :ListView.builder(
                         itemCount: todolist.length,
                         itemBuilder: (context, index) {
                           Todo todo = todolist[index];
@@ -191,8 +141,7 @@ class _NewPageState extends State<NewPage> {
                               ),
                             ),
                             subtitle: Text(
-                              DateTime.fromMillisecondsSinceEpoch(todo.date)
-                                  .toString(),
+                              todo.url,
                               style: const TextStyle(
                                 fontSize: 15,
                               ),
@@ -226,8 +175,8 @@ class _NewPageState extends State<NewPage> {
                           );
                         });
                   }
-                  return Center(
-                    child: Container(
+                  return const Center(
+                    child: SizedBox(
                       height: 100,
                       width: 100,
                       child: CircularProgressIndicator(),

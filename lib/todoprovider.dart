@@ -4,7 +4,7 @@ import 'new todo.dart';
 
 const String columnId = 'id';
 const String columnName = 'name';
-const String columnDate = 'date';
+const String columnURL = 'url';
 const String columnIsChecked = 'isChecked';
 const String todoTable = 'todo_table';
 
@@ -18,13 +18,13 @@ factory TodoProvider(){
 TodoProvider._internal();
 
 Future open() async {
-  db = await openDatabase(join(await getDatabasesPath(), 'todos.db'), version: 1,
+  db = await openDatabase(join(await getDatabasesPath(), 'todo88.db'), version: 1,
       onCreate: (Database db, int version) async {
         await db.execute('''
 create table $todoTable ( 
   $columnId integer primary key autoincrement, 
   $columnName text not null,
-  $columnDate integer not null,
+  $columnURL text not null,
   $columnIsChecked integer not null)
 ''');
       });
@@ -51,6 +51,11 @@ Future<List<Todo>> getAllTodo()async{
 Future<int> deleteTodo(int id) async {
   return await db.delete(todoTable, where: '$columnId = ?', whereArgs: [id]);
 }
+
+Future deleteAllList()async{
+return db.rawQuery('DELETE FROM $todoTable');
+}
+
 Future<int> updateTodo(Todo todo) async {
   return await db.update(todoTable, todo.toMap(),
       where: '$columnId = ?', whereArgs: [todo.id]);
